@@ -21,7 +21,26 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AStar.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="BreadthFirst.py" />
     <Compile Include="Main.py" />
+    <Compile Include="PlayerClass.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="States.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="UnitClass.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="WorldMap.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="_init_.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
