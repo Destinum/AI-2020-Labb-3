@@ -230,7 +230,7 @@ class Player:
 
     def InitialUpgrade(self):
         for i, Unit in enumerate(self.Units):
-            if (i > 20):
+            if (i > 3):
                 break
             Unit.State = Upgrading("Explorer")
 
