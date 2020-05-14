@@ -101,6 +101,8 @@ class Explorer(Unit):
         self.Direction = [0, 0]
         self.WalkPath = [[]]
         self.State = Exploring(self)
+        #self.WalkPath = AStar(self.CurrentNode, (self.CurrentNode[0], self.CurrentNode[1] - 1), self.Player.ExploredTiles, False).Run()
+        #self.SetDirection()
 
     Type = "Explorer"
     Pathfinding = False

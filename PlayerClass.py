@@ -1,4 +1,5 @@
 from UnitClass import *
+#import threading
 
 class Player:
     def __init__(self, StartingLocation, Map, DisplaySize):
@@ -22,6 +23,11 @@ class Player:
                 Y += 1
             X += 1
             Y = -1
+
+        """
+        TheThread = threading.Thread(target=self.InitialIsWoodDumpExploredCheck)
+        TheThread.start()
+        """
 
     Zoom = 1.0
     Units = []
@@ -60,6 +66,8 @@ class Player:
 
         if (self.NextBuilding == "Training Camp" and self.Resources["Swords"] > 10 and self.WoodDumpLocation != (self.StartingLocation[0] - 5, self.StartingLocation[1] - 6)):
             self.WoodDumpLocation = (self.StartingLocation[0] - 5, self.StartingLocation[1] - 6)
+            if (self.ExploredTiles[self.WoodDumpLocation[1]][self.WoodDumpLocation[0]] != "Explored" and len(self.TreeLocations) > 0):
+                self.WoodDumpLocation = BreadthFirst(self.WoodDumpLocation, self.ExploredTiles, "M").Run()
 
         if (TheWorld.Tiles[self.WoodDumpLocation[1]][self.WoodDumpLocation[0]][0] not in TheWorld.StructureTypes):
             WoodCount = 0
@@ -192,6 +200,8 @@ class Player:
                     elif (self.NextBuilding == "Smeltery"):
                         Unit.State = Moving(Building("Smeltery", self.WoodDumpLocation, 120), False)
                         self.WoodDumpLocation = (self.StartingLocation[0], self.StartingLocation[1] - 4)
+                        if (self.ExploredTiles[self.WoodDumpLocation[1]][self.WoodDumpLocation[0]] != "Explored" and len(self.TreeLocations) > 0):
+                            self.WoodDumpLocation = BreadthFirst(self.WoodDumpLocation, self.ExploredTiles, "M").Run()
                         self.NextBuilding = "Smithy"
                         MoveIronToBuildingLocation = True
                     elif (self.NextBuilding == "Smithy"):
@@ -268,3 +278,11 @@ class Player:
                 self.TreeLocations.pop(Index)
             else:
                 Index += 1
+
+"""
+    def InitialIsWoodDumpExploredCheck(self):
+        while len(self.TreeLocations) == 0:
+            continue
+        if (self.ExploredTiles[self.WoodDumpLocation[1]][self.WoodDumpLocation[0]] != "Explored"):
+            self.WoodDumpLocation = BreadthFirst(self.WoodDumpLocation, self.ExploredTiles, "M").Run()
+"""

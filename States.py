@@ -1,5 +1,6 @@
 from WorldMap import *
 from AStar import *
+from BreadthFirst import *
 import threading
 
 class State:
@@ -98,8 +99,10 @@ class Exploring(State):
                                         Index = Maximum
                                         break
 
+                            if (TheUnit.Player.ExploredTiles[TheUnit.Player.WoodDumpLocation[1]][TheUnit.Player.WoodDumpLocation[0]] != "Explored"):
+                                TheUnit.Player.WoodDumpLocation = BreadthFirst(TheUnit.Player.WoodDumpLocation, TheUnit.Player.ExploredTiles, "M").Run()
                             TheUnit.Player.TreeLocations.insert(Index, [TheNode, Distance, {}])
-                            TileInTreeList = TheUnit.Player.TreeLocations[Index]                       
+                            TileInTreeList = TheUnit.Player.TreeLocations[Index]
                         TileInTreeList[2][SpecialTile] = "Available"
 
         TheUnit.SetDestination()

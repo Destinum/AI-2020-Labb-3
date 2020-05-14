@@ -28,7 +28,7 @@ class BreadthFirst:
                     self.FogMap[self.CurrentCoordinates[1] + XY[1]][self.CurrentCoordinates[0] + XY[0]] = "Being Explored"
             return True
 
-        elif (TheWorld.Tiles[Y][X][0] == self.SearchingFor):
+        elif (TheWorld.Tiles[Y][X][0] == self.SearchingFor and self.FogMap[Y][X] == "Explored"):
             return True
 
         elif ((X, Y) not in self.Visited):
