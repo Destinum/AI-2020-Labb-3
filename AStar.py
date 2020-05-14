@@ -3,92 +3,97 @@ import time
 from WorldMap import *
 
 class AStar:
-    def __init__(self, StartCoordinates, GoalCoordinates, Tiles):
-        self.OpenList = []
-        self.ClosedList = []
-        self.CurrentCoordinates = StartCoordinates
-        self.Destination = GoalCoordinates
-        self.TheTileSystem = Tiles
+    def __init__(self, StartCoordinates, Destination, ExploredMap, WalkToAdjacentOfGoal):
+        self.OpenList = {}
+        self.ClosedList = {}
+        self.ExploredMap = ExploredMap
+        self.WalkToAdjacentOfGoal = WalkToAdjacentOfGoal
+
+        self.CurrentCoordinates = (StartCoordinates[0], StartCoordinates[1])
+        self.StartCoordinates = (StartCoordinates[0], StartCoordinates[1])
+        self.Destination = Destination
 
         TotalDistance = self.DistanceToGoal(StartCoordinates[0], StartCoordinates[1])
-        self.TheTileSystem[StartCoordinates[1]][StartCoordinates[0]] = ["S", 0, TotalDistance, TotalDistance, "NULL", "Unknown"]
-        self.ClosedList.append([StartCoordinates[0], StartCoordinates[1]])
+        self.ClosedList[self.StartCoordinates] = [0, TotalDistance, TotalDistance, "NULL"]
+
+##############################################################################
 
     def DistanceToGoal(self, X, Y):
         xDistance = abs(self.Destination[0] - X)
         yDistance = abs(self.Destination[1] - Y)
-        TotalDistance = abs(xDistance - yDistance) * 10
-        if (xDistance > yDistance):
-            TotalDistance += (xDistance - abs(xDistance - yDistance)) * 14
-        else:
-            TotalDistance += (yDistance - abs(xDistance - yDistance)) * 14
-        return TotalDistance
+        return (xDistance + yDistance)
 
+##############################################################################
 
     def CheckTile(self, BaseX, BaseY):
+
         X = BaseX + self.CurrentCoordinates[0]
         Y = BaseY + self.CurrentCoordinates[1]
 
-        for Closed in self.ClosedList:
-            if (Closed == [X, Y]):
-                return False
+        if ((X, Y) in self.ClosedList):
+            return False
 
-        if (Tiles[Y][X][0] != "X"):
-            DistanceToStart = Tiles[self.CurrentCoordinates[1]][self.CurrentCoordinates[0]][1] + 10
+        UnwalkableTile = TheWorld.Tiles[Y][X][0] not in ("M", "T", "G") or self.ExploredMap[Y][X] == "Unknown"
 
-            if (BaseX != 0 and BaseY != 0):
-                if (Tiles[Y][self.CurrentCoordinates[0]][0] != "X" and Tiles[self.CurrentCoordinates[1]][X][0] != "X"):
-                    DistanceToStart += 4
-                else:
-                    return False
+        if ((X, Y) == self.Destination and UnwalkableTile):
+            self.WalkToAdjacentOfGoal = True
 
-            for Open in self.OpenList:
-                if (Open == [X, Y]):
-                    if (DistanceToStart < Tiles[Y][X][1]):
-                        Tiles[Y][X][1] = DistanceToStart
-                        Tiles[Y][X][3] = Tiles[Y][X][1] + Tiles[Y][X][2]
-                        Tiles[Y][X][4] = self.CurrentCoordinates
-                    return True
+        if (UnwalkableTile == False or (self.WalkToAdjacentOfGoal and (X, Y) == self.Destination)):
 
-            Tiles[Y][X][1] = DistanceToStart
-            Tiles[Y][X][2] = self.DistanceToGoal(X, Y)
-            Tiles[Y][X][3] = Tiles[Y][X][1] + Tiles[Y][X][2]
-            Tiles[Y][X][4] = self.CurrentCoordinates
-            self.OpenList.append([X, Y])
+            DistanceToStart = self.ClosedList[self.CurrentCoordinates][0] + 1
+
+            if(TheWorld.Tiles[Y][X][0] == "G"):
+                DistanceToStart += 1
+
+            if ((X, Y) in self.OpenList):
+                if (DistanceToStart < self.OpenList[(X, Y)][1]):
+                    self.OpenList[(X, Y)][0] = DistanceToStart
+                    self.OpenList[(X, Y)][2] = self.OpenList[(X, Y)][1] + self.OpenList[(X, Y)][2]
+                    self.OpenList[(X, Y)][3] = self.CurrentCoordinates
+                return True
+
+            self.OpenList[(X, Y)] = [DistanceToStart, self.DistanceToGoal(X, Y), (DistanceToStart + self.DistanceToGoal(X, Y)), self.CurrentCoordinates]
             return True
 
         return False
 
-    def Run(self):
-        while (Tiles[self.CurrentCoordinates[1]][self.CurrentCoordinates[0]][0] != "G"):
-            X = -1
-            Y = -1
+##############################################################################
 
-            while X < 2:
-                while Y < 2:         
-                    self.CheckTile(X, Y)
-                    Y += 1
-                X += 1
-                Y = -1
+    def Run(self):
+        Path = [[]]
+
+        while (self.CurrentCoordinates != self.Destination):
+            
+            for XY in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                self.CheckTile(XY[0], XY[1])
 
             ShortestTotal = float('inf')
             for Open in self.OpenList:
-                if (Tiles[Open[1]][Open[0]][3] < ShortestTotal or (Tiles[Open[1]][Open[0]][3] == ShortestTotal and Tiles[Open[1]][Open[0]][2] < Tiles[self.CurrentCoordinates[1]][self.CurrentCoordinates[0]][2])):
+                if (self.OpenList[Open][2] < ShortestTotal or (self.OpenList[Open][2] == ShortestTotal and self.OpenList[Open][1] < self.OpenList[self.CurrentCoordinates][1])):
                     self.CurrentCoordinates = Open
-                    ShortestTotal = Tiles[Open[1]][Open[0]][3]
+                    ShortestTotal = self.OpenList[Open][2]
 
-            pygame.draw.rect(Window, (200, 0, 255), (int(Displacement[0][0] - DisplacementX + TileSize * self.CurrentCoordinates[0] + SmallTile / 2), int(Displacement[0][1] - DisplacementY + TileSize * self.CurrentCoordinates[1] + SmallTile / 2), SmallTile, SmallTile))
-            self.OpenList.remove(self.CurrentCoordinates)
-            self.ClosedList.append(self.CurrentCoordinates)
+            self.ClosedList[self.CurrentCoordinates] = self.OpenList[self.CurrentCoordinates]
+            del self.OpenList[self.CurrentCoordinates]
 
-            
-            #pygame.draw.rect(Window, (255, 255, 255), ((Location[0] - DisplacementX + TileSize * i), (Location[1] - DisplacementY + TileSize * index), TileSize - 1, TileSize - 1))
-            #DisplacementX = (len(lines[0]) - 1) * TileSize / 2
-            #DisplacementY = len(lines) * TileSize / 2
+        if (self.WalkToAdjacentOfGoal):
+            Path.append("Next To")
 
+        while (self.CurrentCoordinates != self.StartCoordinates):
+            Path[0].insert(0, self.CurrentCoordinates)
+            self.CurrentCoordinates = self.ClosedList[self.CurrentCoordinates][3]
 
+        if (len(Path[0]) == 0):
+            if (self.WalkToAdjacentOfGoal):
+                for XY in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    self.CheckTile(XY[0], XY[1])
+                    X = XY[0] + self.CurrentCoordinates[0]
+                    Y = XY[1] + self.CurrentCoordinates[1]
+                    UnwalkableTile = TheWorld.Tiles[Y][X][0] not in ("M", "T", "G") or self.ExploredMap[Y][X] == "Unknown"
+                    if (UnwalkableTile == False):
+                        Path[0].append((X, Y))
+                        break
 
-        while (self.CurrentCoordinates != StartCoordinates):
-            pygame.draw.rect(Window, (255, 0, 0), (int(Displacement[0][0] - DisplacementX + TileSize * self.CurrentCoordinates[0] + SmallTile / 2), int(Displacement[0][1] - DisplacementY + TileSize * self.CurrentCoordinates[1] + SmallTile / 2), SmallTile, SmallTile))
-            self.CurrentCoordinates = Tiles[self.CurrentCoordinates[1]][self.CurrentCoordinates[0]][4]
-        pygame.draw.rect(Window, (255, 0, 0), (int(Displacement[0][0] - DisplacementX + TileSize * self.CurrentCoordinates[0] + SmallTile / 2), int(Displacement[0][1] - DisplacementY + TileSize * self.CurrentCoordinates[1] + SmallTile / 2), SmallTile, SmallTile))
+            Path[0].append(self.CurrentCoordinates)
+
+        return Path

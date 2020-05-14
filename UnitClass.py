@@ -1,126 +1,140 @@
 import random
 from WorldMap import *
+from AStar import *
+from BreadthFirst import *
+from States import *
 
 class Unit:
-    def __init__(self, TheType):
-        self.Type = TheType
-
-    MovementSpeed = 1.0
-
-    def Update(self):
-        print("Nothing to Update")
-
-
-class Explorer(Unit):
-    def __init__(self, TheType, Location, ThePlayer):
-        self.Type = TheType
-        self.CurrentNode = Location
+    def __init__(self, Location, ThePlayer):
+        self.CurrentNode = copy.deepcopy(Location)
         self.Player = ThePlayer
+        self.ID = "NULL"
         ThePlayer.AddUnit(self)
-
-        #self.Direction = [random.randrange(-1, 2, 1), random.randrange(-1, 2, 1)]
-        self.Direction = [random.randrange(-1, 2, 2), 0]
+        self.Direction = [0, 0]
+        self.WalkPath = [[]]
         X = random.randrange(0, 10, 1)
         Y = random.randrange(0, 10, 1)
         self.NodeCoordinates = [int(X * TheWorld.TileSize / 10), int(Y * TheWorld.TileSize / 10)]
+        self.DumpLocation = ThePlayer.WoodDumpLocation
 
-    Color = [255, 0, 0]
-    #NodeCoordinates = [5, 5]
+    Type = "NULL"
+    MovementSpeed = 1.0
+    MoveThisFrame = True
+    Color = [0, 0, 0]
+    State = State()
 
-    def Update(self):
-        #self.RandomMove()
-        self.Move()
-        #self.Explore(self.CurrentNode[0], self.CurrentNode[1])
+    def SetDestination(self, Destination, WalkToAdjacentOfGoal):
+        self.WalkPath = AStar(self.CurrentNode, Destination, self.Player.ExploredTiles, WalkToAdjacentOfGoal).Run()
+        self.SetDirection()
+
+    def SetDirection(self):
+        if (len(self.WalkPath[0]) > 0):
+            self.Direction[0] = self.WalkPath[0][0][0] - self.CurrentNode[0]
+            self.Direction[1] = self.WalkPath[0][0][1] - self.CurrentNode[1]
 
     def Move(self):
-        Movement = int(TheWorld.TileSize / 10 * self.MovementSpeed)
+        if (TheWorld.Tiles[self.CurrentNode[1]][self.CurrentNode[0]][0] == "G"):
+            self.MoveThisFrame = not self.MoveThisFrame
+
+        if (self.MoveThisFrame == False or len(self.WalkPath[0]) == 0):
+            return False
+
+        Movement = int(self.MovementSpeed)
 
         self.NodeCoordinates[0] += self.Direction[0] * Movement
         self.NodeCoordinates[1] += self.Direction[1] * Movement
 
-        Exploring = False
+        MoveToNewTile = False
 
-        if (self.NodeCoordinates[0] >= TheWorld.TileSize):
-            self.NodeCoordinates[0] = self.NodeCoordinates[0] - TheWorld.TileSize
-            self.CurrentNode[0] += 1
-            Exploring = True
-        elif (self.NodeCoordinates[0] < 0):
-            self.NodeCoordinates[0] = TheWorld.TileSize + self.NodeCoordinates[0]
-            self.CurrentNode[0] -= 1
-            Exploring = True
-        if (self.NodeCoordinates[1] >= TheWorld.TileSize):
-            self.NodeCoordinates[1] = self.NodeCoordinates[1] - TheWorld.TileSize
-            self.CurrentNode[1] += 1
-            Exploring = True
-        elif (self.NodeCoordinates[1] < 0):
-            self.NodeCoordinates[1] = TheWorld.TileSize + self.NodeCoordinates[1]
-            self.CurrentNode[1] -= 1
-            Exploring = True
+        if (self.NodeCoordinates[0] >= TheWorld.TileSize or self.NodeCoordinates[0] < 0 or self.NodeCoordinates[1] >= TheWorld.TileSize or self.NodeCoordinates[1] < 0):
+            if (len(self.WalkPath) == 1 or self.WalkPath[1] != "Next To" or len(self.WalkPath[0]) > 1):
+                self.NodeCoordinates[0] -= self.Direction[0] * TheWorld.TileSize
+                self.CurrentNode[0] += self.Direction[0]
+                self.NodeCoordinates[1] -= self.Direction[1] * TheWorld.TileSize
+                self.CurrentNode[1] += self.Direction[1]
+            else:
+                self.NodeCoordinates[0] -= self.Direction[0] * Movement
+                self.NodeCoordinates[1] -= self.Direction[1] * Movement
+            MoveToNewTile = True
 
-        if (Exploring):
-            self.Explore(self.CurrentNode[0], self.CurrentNode[1])
+        if (MoveToNewTile):
+            self.WalkPath[0].pop(0)
+            self.SetDirection()
 
-        self.CheckNextTile()
+        return MoveToNewTile
 
-    def CheckNextTile(self):
-        NextTile = TheWorld.Tiles[self.CurrentNode[1] + self.Direction[1]][self.CurrentNode[0] + self.Direction[0]]
-        if (NextTile[0] == "V" or NextTile[0] == "B" or (self.Direction[0] == 0 and self.Direction[1] == 0) or (self.Direction[0] != 0 and self.Direction[1] != 0)):
-            self.Direction = [random.randrange(-1, 2, 1), random.randrange(-1, 2, 1)]
-            #self.Direction = [random.randrange(-1, 2, 2), 0]
-            """
-            if (self.Direction[0] == 1):
-                self.Direction = [0, 1]
-            elif (self.Direction[1] == 1):
-                self.Direction = [-1, 0]
-            elif (self.Direction[0] == -1):
-                self.Direction = [0, -1]
-            elif (self.Direction[1] == -1):
-                self.Direction = [1, 0]
-            """
-            self.CheckNextTile()
 
-    def RandomMove(self):
-        X = random.randrange(-1, 2, 1)
-        Y = random.randrange(-1, 2, 1)
+class Worker(Unit):
+    Type = "Worker"
+    Carrying = "NULL"
 
-        Movement = int(TheWorld.TileSize / 10 * self.MovementSpeed)
+    def ChangeType(self, Type):
+        if (Type == "Explorer"):
+            self.Player.Units[self.ID] = Explorer(self.CurrentNode, self.NodeCoordinates, self.Player, self.ID)
+        elif (Type == "Artisan"):
+            self.Player.Units[self.ID] = Artisan(self.CurrentNode, self.NodeCoordinates, self.Player, self.ID)
+        elif (Type == "Soldier"):
+            self.Player.Units[self.ID] = Soldier(self.CurrentNode, self.NodeCoordinates, self.Player, self.ID)
 
-        self.NodeCoordinates[0] += X * Movement
-        self.NodeCoordinates[1] += Y * Movement
+    def Pickup(self, Coordinate):
+        if (self.Carrying == "NULL"):
+            self.Carrying = TheWorld.Tiles[self.CurrentNode[1]][self.CurrentNode[0]][1][Coordinate]
+            del TheWorld.Tiles[self.CurrentNode[1]][self.CurrentNode[0]][1][Coordinate]
+        else:
+            CarriedObject = self.Carrying
+            self.Carrying = TheWorld.Tiles[self.CurrentNode[1]][self.CurrentNode[0]][1][Coordinate]
+            TheWorld.Tiles[self.CurrentNode[1]][self.CurrentNode[0]][1][Coordinate] = CarriedObject
+        TheWorld.DrawTile(self.Player.MapImage, self.CurrentNode[0], self.CurrentNode[1])
 
-        Exploring = False
+    def PutDown(self, Coordinate):
+        if (self.Carrying != "NULL"):
+            TheWorld.Tiles[self.CurrentNode[1]][self.CurrentNode[0]][1][Coordinate] = self.Carrying
+            TheWorld.DrawTile(self.Player.MapImage, self.CurrentNode[0], self.CurrentNode[1])
+            self.Carrying = "NULL"
 
-        if (self.NodeCoordinates[0] >= TheWorld.TileSize):
-            self.NodeCoordinates[0] = self.NodeCoordinates[0] - TheWorld.TileSize
-            self.CurrentNode[0] += 1
-            Exploring = True
-        elif (self.NodeCoordinates[0] < 0):
-            self.NodeCoordinates[0] = TheWorld.TileSize + self.NodeCoordinates[0]
-            self.CurrentNode[0] -= 1
-            Exploring = True
-        if (self.NodeCoordinates[1] >= TheWorld.TileSize):
-            self.NodeCoordinates[1] = self.NodeCoordinates[1] - TheWorld.TileSize
-            self.CurrentNode[1] += 1
-            Exploring = True
-        elif (self.NodeCoordinates[1] < 0):
-            self.NodeCoordinates[1] = TheWorld.TileSize + self.NodeCoordinates[1]
-            self.CurrentNode[1] -= 1
-            Exploring = True
+class Explorer(Unit):
+    def __init__(self, Location, NodeCoordinates, ThePlayer, ID):
+        self.CurrentNode = copy.deepcopy(Location)
+        self.NodeCoordinates = copy.deepcopy(NodeCoordinates)
+        self.Player = ThePlayer
+        self.ID = ID
+        self.Direction = [0, 0]
+        self.WalkPath = [[]]
+        self.State = Exploring(self)
 
-        if (Exploring):
-            self.Explore(self.CurrentNode[0], self.CurrentNode[1])
+    Type = "Explorer"
+    Pathfinding = False
 
-    def Explore(self, xValue, yValue):
-        #"""
-        X = -1
-        Y = -1
+    def SetDestination(self):
+        if (len(self.WalkPath[0]) == 0):
+            NewDestination = BreadthFirst(self.CurrentNode, self.Player.ExploredTiles, "Exploring").Run()
+            if (NewDestination[0] == self.CurrentNode[0] and NewDestination[1] == self.CurrentNode[1]):
+                self.State = State()
+                if (self.Player.TreeListPerfectlySorted == False):
+                    self.Player.SortTrees()
+                return
+            self.WalkPath = AStar(self.CurrentNode, NewDestination, self.Player.ExploredTiles, False).Run()
+            self.SetDirection()
 
-        while X < 2:
-            while Y < 2:
-                #print(ExploredTiles[yValue + Y][xValue + X])
-                self.Player.ExploredTiles[(yValue + Y)][(xValue + X)] = "Explored"
-                Y += 1
-            X += 1
-            Y = -1
-        #"""
-        #ExploredTiles[(yValue)][(xValue)] = "Explored"
+
+class Soldier(Unit):
+    def __init__(self, Location, NodeCoordinates, ThePlayer, ID):
+        self.CurrentNode = copy.deepcopy(Location)
+        self.Player = ThePlayer
+        self.ID = ID
+        self.Direction = [0, 0]
+        self.WalkPath = [[]]
+        self.NodeCoordinates = copy.deepcopy(NodeCoordinates)
+    
+    Type = "Soldier"
+
+class Artisan(Unit):
+    def __init__(self, Location, NodeCoordinates, ThePlayer, ID):
+        self.CurrentNode = copy.deepcopy(Location)
+        self.Player = ThePlayer
+        self.ID = ID
+        self.Direction = [0, 0]
+        self.WalkPath = [[]]
+        self.NodeCoordinates = copy.deepcopy(NodeCoordinates)
+
+    Type = "Artisan"
