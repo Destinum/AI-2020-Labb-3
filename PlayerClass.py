@@ -1,5 +1,4 @@
 from UnitClass import *
-#import threading
 
 class Player:
     def __init__(self, StartingLocation, Map, DisplaySize):
@@ -23,11 +22,6 @@ class Player:
                 Y += 1
             X += 1
             Y = -1
-
-        """
-        TheThread = threading.Thread(target=self.InitialIsWoodDumpExploredCheck)
-        TheThread.start()
-        """
 
     Zoom = 1.0
     Units = []
@@ -278,11 +272,3 @@ class Player:
                 self.TreeLocations.pop(Index)
             else:
                 Index += 1
-
-"""
-    def InitialIsWoodDumpExploredCheck(self):
-        while len(self.TreeLocations) == 0:
-            continue
-        if (self.ExploredTiles[self.WoodDumpLocation[1]][self.WoodDumpLocation[0]] != "Explored"):
-            self.WoodDumpLocation = BreadthFirst(self.WoodDumpLocation, self.ExploredTiles, "M").Run()
-"""
